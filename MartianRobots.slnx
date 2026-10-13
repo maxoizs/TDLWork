@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MartianRobots.Tests/MartianRobots.Tests.csproj" />
+  <Project Path="MartianRobots/MartianRobots.csproj" />
+</Solution>
