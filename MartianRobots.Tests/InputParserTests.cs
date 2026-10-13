@@ -102,6 +102,44 @@ public class InputParserTests
         Assert.Equal(new RobotState(1, 1, Direction.E), state);
     }
 
+    // --- Case-insensitive direction parsing ---
+
+    [Theory]
+    [InlineData("1 1 n", Direction.N)]
+    [InlineData("1 1 e", Direction.E)]
+    [InlineData("1 1 s", Direction.S)]
+    [InlineData("1 1 w", Direction.W)]
+    public void ParseRobotState_LowercaseDirection_ParsedCorrectly(string line, Direction expected)
+    {
+        var state = InputParser.ParseRobotState(line);
+        Assert.Equal(expected, state.Facing);
+    }
+
+    [Theory]
+    [InlineData("1 1 N")]
+    [InlineData("1 1 n")]
+    public void ParseRobotState_DirectionCaseInsensitive_BothWork(string line)
+    {
+        var state = InputParser.ParseRobotState(line);
+        Assert.Equal(Direction.N, state.Facing);
+    }
+
+    // --- Malformed input ---
+
+    [Fact]
+    public void Parse_PositionLineWithoutInstructionLine_Throws()
+    {
+        var input = "5 3\n1 1 N";
+        Assert.Throws<FormatException>(() => InputParser.Parse(input));
+    }
+
+    [Fact]
+    public void Parse_NoRobots_ReturnsEmptyList()
+    {
+        var (_, robots) = InputParser.Parse("5 3");
+        Assert.Empty(robots);
+    }
+
     private const string SampleInput =
         "5 3\n1 1 E\nRFRFRFRF\n3 2 N\nFRRFLLFFRRFLL\n0 3 W\nLLFFFLFLFL";
 }

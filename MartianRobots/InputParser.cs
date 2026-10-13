@@ -18,13 +18,14 @@ public static class InputParser
 
     /// <summary>
     /// Parses a robot position line (e.g. "1 1 E") into a <see cref="RobotState"/>.
+    /// Direction parsing is case-insensitive.
     /// </summary>
     public static RobotState ParseRobotState(string line)
     {
         var parts = line.Trim().Split(' ');
         var x = int.Parse(parts[0]);
         var y = int.Parse(parts[1]);
-        var facing = Enum.Parse<Direction>(parts[2]);
+        var facing = Enum.Parse<Direction>(parts[2], ignoreCase: true);
         return new RobotState(x, y, facing);
     }
 
@@ -32,14 +33,21 @@ public static class InputParser
     /// Parses the full input string into a grid and an ordered list of robot inputs.
     /// Format: first line is grid bounds, then pairs of lines per robot (position then instructions).
     /// </summary>
+    /// <exception cref="FormatException">Thrown when a robot position line has no following instruction line.</exception>
     public static (Grid Grid, List<RobotInput> Robots) Parse(string input)
     {
         var lines = input.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         var grid = ParseGrid(lines[0]);
         var robots = new List<RobotInput>();
 
-        for (var i = 1; i + 1 < lines.Length; i += 2)
+        for (var i = 1; i < lines.Length; i += 2)
+        {
+            if (i + 1 >= lines.Length)
+                throw new FormatException(
+                    $"Robot at line {i + 1} has a position line but no instruction line.");
+
             robots.Add(new RobotInput(ParseRobotState(lines[i]), lines[i + 1].Trim()));
+        }
 
         return (grid, robots);
     }

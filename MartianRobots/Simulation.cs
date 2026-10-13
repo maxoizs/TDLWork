@@ -7,17 +7,12 @@ namespace MartianRobots;
 /// </summary>
 public class Simulation
 {
-    private readonly Dictionary<char, Func<RobotState, Grid, RobotState>> _commands;
-
-    public Simulation()
+    private static readonly Dictionary<char, Func<RobotState, Grid, RobotState>> _commands = new()
     {
-        _commands = new Dictionary<char, Func<RobotState, Grid, RobotState>>
-        {
-            ['L'] = (state, _) => state with { Facing = state.Facing.TurnLeft() },
-            ['R'] = (state, _) => state with { Facing = state.Facing.TurnRight() },
-            ['F'] = MoveForward,
-        };
-    }
+        ['L'] = (state, _) => state with { Facing = state.Facing.TurnLeft() },
+        ['R'] = (state, _) => state with { Facing = state.Facing.TurnRight() },
+        ['F'] = MoveForward,
+    };
 
     /// <summary>
     /// Executes an instruction string for a single robot and returns its final state.
