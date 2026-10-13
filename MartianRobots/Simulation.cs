@@ -1,5 +1,10 @@
 namespace MartianRobots;
 
+/// <summary>
+/// Runs robots through their instruction sequences on a grid.
+/// Commands are registered in a dictionary for extensibility — adding a new
+/// command type requires one entry with no changes to the execution loop.
+/// </summary>
 public class Simulation
 {
     private readonly Dictionary<char, Func<RobotState, Grid, RobotState>> _commands;
@@ -14,6 +19,14 @@ public class Simulation
         };
     }
 
+    /// <summary>
+    /// Executes an instruction string for a single robot and returns its final state.
+    /// Unknown commands are silently ignored, allowing future command types without breaking existing runs.
+    /// </summary>
+    /// <param name="state">Starting position and orientation.</param>
+    /// <param name="instructions">String of command characters (L, R, F).</param>
+    /// <param name="grid">The grid — holds bounds and shared scent state across all robots.</param>
+    /// <returns>Final robot state after all instructions; IsLost is true if the robot fell off the grid.</returns>
     public RobotState Execute(RobotState state, string instructions, Grid grid)
     {
         foreach (var cmd in instructions)
@@ -25,6 +38,11 @@ public class Simulation
         return state;
     }
 
+    /// <summary>
+    /// Attempts to move the robot one step forward. If the next position is out of bounds:
+    /// - and a scent exists at the current position, the instruction is ignored (robot survives);
+    /// - otherwise the robot is marked LOST and a scent is deposited at the last valid position.
+    /// </summary>
     private static RobotState MoveForward(RobotState state, Grid grid)
     {
         var (dx, dy) = state.Facing.Delta();

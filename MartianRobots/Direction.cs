@@ -1,9 +1,11 @@
 namespace MartianRobots;
 
+/// <summary>Cardinal compass directions a robot can face.</summary>
 public enum Direction { N, E, S, W }
 
 public static class DirectionExtensions
 {
+    /// <summary>Returns the direction after a 90-degree left (counter-clockwise) turn.</summary>
     public static Direction TurnLeft(this Direction d) =>
         d switch
         {
@@ -14,6 +16,7 @@ public static class DirectionExtensions
             _ => throw new ArgumentOutOfRangeException(nameof(d))
         };
 
+    /// <summary>Returns the direction after a 90-degree right (clockwise) turn.</summary>
     public static Direction TurnRight(this Direction d) =>
         d switch
         {
@@ -24,6 +27,7 @@ public static class DirectionExtensions
             _ => throw new ArgumentOutOfRangeException(nameof(d))
         };
 
+    /// <summary>Returns the (dx, dy) unit vector for one forward step in this direction.</summary>
     public static (int dx, int dy) Delta(this Direction d) =>
         d switch
         {
