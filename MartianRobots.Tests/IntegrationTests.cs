@@ -6,7 +6,9 @@ public class IntegrationTests
 {
     private static List<string> Run(string input)
     {
-        var (grid, robots) = InputParser.Parse(input);
+        var parsed = InputParser.Parse(input);
+        Assert.True(parsed.IsSuccess, parsed.Error);
+        var (grid, robots) = parsed.Value;
         var sim = new Simulation();
         var results = new List<string>();
 
