@@ -157,4 +157,50 @@ public class SimulationTests
         var result = _sim.Execute(new RobotState(3, 2, Direction.N), "FRRFLLFFRRFLL", _grid);
         Assert.Equal(new RobotState(3, 3, Direction.N, IsLost: true), result);
     }
+
+    // --- Scent prevents falling ---
+
+    [Fact]
+    public void Scent_PreventsRobotFallingOffSameEdge()
+    {
+        _grid.AddScent(3, 3);
+        var result = _sim.Execute(new RobotState(3, 3, Direction.N), "F", _grid);
+        Assert.False(result.IsLost);
+        Assert.Equal(new RobotState(3, 3, Direction.N), result);
+    }
+
+    [Fact]
+    public void Scent_RobotContinuesAfterIgnoredInstruction()
+    {
+        _grid.AddScent(3, 3);
+        var result = _sim.Execute(new RobotState(3, 3, Direction.N), "FLF", _grid);
+        Assert.False(result.IsLost);
+        Assert.Equal(new RobotState(2, 3, Direction.W), result);
+    }
+
+    [Fact]
+    public void Scent_DoesNotProtectDifferentPosition()
+    {
+        _grid.AddScent(3, 3);
+        var result = _sim.Execute(new RobotState(4, 3, Direction.N), "F", _grid);
+        Assert.True(result.IsLost);
+    }
+
+    [Fact]
+    public void Scent_DoesNotBlockSafeMoveFromSamePosition()
+    {
+        _grid.AddScent(5, 1);
+        var result = _sim.Execute(new RobotState(5, 1, Direction.N), "F", _grid);
+        Assert.False(result.IsLost);
+        Assert.Equal(new RobotState(5, 2, Direction.N), result);
+    }
+
+    [Fact]
+    public void Sample_Robot3_SavedByScent()
+    {
+        _sim.Execute(new RobotState(3, 2, Direction.N), "FRRFLLFFRRFLL", _grid);
+        var result = _sim.Execute(new RobotState(0, 3, Direction.W), "LLFFFLFLFL", _grid);
+        Assert.Equal(new RobotState(2, 3, Direction.S), result);
+        Assert.False(result.IsLost);
+    }
 }
