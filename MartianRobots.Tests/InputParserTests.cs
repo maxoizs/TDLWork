@@ -85,6 +85,23 @@ public class InputParserTests
         Assert.Equal("F", robots[0].Instructions);
     }
 
+    [Fact]
+    public void ParseInput_WindowsLineEndings_ParsedCorrectly()
+    {
+        var input = "5 3\r\n1 1 E\r\nRFRFRFRF\r\n3 2 N\r\nFRRFLLFFRRFLL";
+        var (_, robots) = InputParser.Parse(input);
+        Assert.Equal(2, robots.Count);
+        Assert.Equal(new RobotState(1, 1, Direction.E), robots[0].State);
+        Assert.Equal("RFRFRFRF", robots[0].Instructions);
+    }
+
+    [Fact]
+    public void ParseRobotState_WithTrailingWhitespace_ParsedCorrectly()
+    {
+        var state = InputParser.ParseRobotState("1 1 E   ");
+        Assert.Equal(new RobotState(1, 1, Direction.E), state);
+    }
+
     private const string SampleInput =
         "5 3\n1 1 E\nRFRFRFRF\n3 2 N\nFRRFLLFFRRFLL\n0 3 W\nLLFFFLFLFL";
 }

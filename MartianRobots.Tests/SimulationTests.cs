@@ -203,4 +203,74 @@ public class SimulationTests
         Assert.Equal(new RobotState(2, 3, Direction.S), result);
         Assert.False(result.IsLost);
     }
+
+    // --- Unknown command characters ---
+
+    [Fact]
+    public void UnknownCommand_IsIgnored()
+    {
+        var start = new RobotState(1, 1, Direction.N);
+        var result = _sim.Execute(start, "X", _grid);
+        Assert.Equal(start, result);
+    }
+
+    [Fact]
+    public void MixedUnknownAndKnownCommands_OnlyKnownApplied()
+    {
+        var result = _sim.Execute(new RobotState(1, 1, Direction.N), "XFZ", _grid);
+        Assert.Equal(new RobotState(1, 2, Direction.N), result);
+    }
+
+    // --- Boundary-parallel movement ---
+
+    [Fact]
+    public void MoveAlongEastBoundary_StaysInBounds()
+    {
+        var result = _sim.Execute(new RobotState(5, 0, Direction.N), "F", _grid);
+        Assert.False(result.IsLost);
+        Assert.Equal(new RobotState(5, 1, Direction.N), result);
+    }
+
+    [Fact]
+    public void MoveAlongSouthBoundary_StaysInBounds()
+    {
+        var result = _sim.Execute(new RobotState(0, 0, Direction.E), "F", _grid);
+        Assert.False(result.IsLost);
+        Assert.Equal(new RobotState(1, 0, Direction.E), result);
+    }
+
+    // --- Multiple robots depositing scent at same position ---
+
+    [Fact]
+    public void TwoRobots_FallOffSameEdge_SecondScent_IsNoOp()
+    {
+        var grid = new Grid(5, 3);
+        var sim = new Simulation();
+        sim.Execute(new RobotState(3, 3, Direction.N), "F", grid);
+        sim.Execute(new RobotState(3, 3, Direction.N), "F", grid);
+        Assert.True(grid.HasScent(3, 3));
+
+        var survivor = sim.Execute(new RobotState(3, 3, Direction.N), "F", grid);
+        Assert.False(survivor.IsLost);
+    }
+
+    // --- Minimal grid simulation ---
+
+    [Fact]
+    public void MinimalGrid_RobotMovesOff_IsLost()
+    {
+        var grid = new Grid(0, 0);
+        var result = new Simulation().Execute(new RobotState(0, 0, Direction.N), "F", grid);
+        Assert.True(result.IsLost);
+        Assert.Equal(new RobotState(0, 0, Direction.N, IsLost: true), result);
+    }
+
+    [Fact]
+    public void MinimalGrid_TurnOnly_Survives()
+    {
+        var grid = new Grid(0, 0);
+        var result = new Simulation().Execute(new RobotState(0, 0, Direction.N), "LLLL", grid);
+        Assert.False(result.IsLost);
+        Assert.Equal(new RobotState(0, 0, Direction.N), result);
+    }
 }
