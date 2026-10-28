@@ -1,9 +1,6 @@
 namespace MartianRobots;
 
-/// <summary>A robot's starting state paired with its instruction string.</summary>
-public record RobotInput(RobotState State, string Instructions);
-
-/// <summary>Parses the challenge's text input format into typed domain objects. Never throws.</summary>
+/// <summary>Parses the challenge's text input one line at a time into typed domain objects. Never throws.</summary>
 public static class InputParser
 {
     private const int MaxCoordinate = 50;
@@ -14,9 +11,9 @@ public static class InputParser
     /// </summary>
     public static Result<Grid> ParseGrid(string line)
     {
-        var parts = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var parts = Split(line);
 
-        if (parts.Length < 2)
+        if (parts.Length != 2)
             return Result<Grid>.Fail($"Grid line must have two integers '<maxX> <maxY>', got: '{line.Trim()}'.");
 
         if (!int.TryParse(parts[0], out var maxX))
@@ -35,14 +32,15 @@ public static class InputParser
     }
 
     /// <summary>
-    /// Parses a robot position line (e.g. "1 1 E") into a <see cref="RobotState"/>.
-    /// Direction parsing is case-insensitive. Returns a failed result instead of throwing.
+    /// Parses a robot position line (e.g. "1 1 E") into a <see cref="RobotState"/> and checks
+    /// the start lies on <paramref name="grid"/>. Direction parsing is case-insensitive and accepts
+    /// only N, E, S or W. Returns a failed result instead of throwing.
     /// </summary>
-    public static Result<RobotState> ParseRobotState(string line)
+    public static Result<RobotState> ParseRobotState(string line, Grid grid)
     {
-        var parts = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var parts = Split(line);
 
-        if (parts.Length < 3)
+        if (parts.Length != 3)
             return Result<RobotState>.Fail(
                 $"Robot position line must have format '<x> <y> <N|S|E|W>', got: '{line.Trim()}'.");
 
@@ -52,44 +50,31 @@ public static class InputParser
         if (!int.TryParse(parts[1], out var y))
             return Result<RobotState>.Fail($"Robot y coordinate '{parts[1]}' is not a valid integer.");
 
-        if (!Enum.TryParse<Direction>(parts[2], ignoreCase: true, out var facing))
-            return Result<RobotState>.Fail(
-                $"Unknown direction '{parts[2]}'. Expected N, S, E, or W.");
+        if (parts[2].Length != 1 || !"NESW".Contains(char.ToUpperInvariant(parts[2][0])))
+            return Result<RobotState>.Fail($"Unknown direction '{parts[2]}'. Expected N, S, E, or W.");
 
+        if (grid.IsOutOfBounds(x, y))
+            return Result<RobotState>.Fail($"Robot start ({x}, {y}) is outside the grid.");
+
+        var facing = Enum.Parse<Direction>(parts[2], ignoreCase: true);
         return Result<RobotState>.Ok(new RobotState(x, y, facing));
     }
 
     /// <summary>
-    /// Parses the full input string into a grid and an ordered list of robot inputs.
-    /// Format: first line is grid bounds, then pairs of lines per robot (position then instructions).
-    /// Returns a failed result instead of throwing on any malformed input.
+    /// Parses an instruction line (e.g. "RFRF"). Case-insensitive; the result is uppercase.
+    /// Fails on any character that is not a registered command. An empty line is valid (no commands).
     /// </summary>
-    public static Result<(Grid Grid, List<RobotInput> Robots)> Parse(string input)
+    public static Result<string> ParseInstructions(string line)
     {
-        var lines = input.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var instructions = line.Trim().ToUpperInvariant();
 
-        if (lines.Length == 0)
-            return Result<(Grid, List<RobotInput>)>.Fail("Input is empty.");
+        foreach (var command in instructions)
+            if (!Simulation.IsKnownCommand(command))
+                return Result<string>.Fail($"Unknown command '{command}' in instructions '{instructions}'.");
 
-        var gridResult = ParseGrid(lines[0]);
-        if (!gridResult.IsSuccess)
-            return Result<(Grid, List<RobotInput>)>.Fail(gridResult.Error);
-
-        var robots = new List<RobotInput>();
-
-        for (var i = 1; i < lines.Length; i += 2)
-        {
-            if (i + 1 >= lines.Length)
-                return Result<(Grid, List<RobotInput>)>.Fail(
-                    $"Robot at line {i + 1} has a position line but no instruction line.");
-
-            var stateResult = ParseRobotState(lines[i]);
-            if (!stateResult.IsSuccess)
-                return Result<(Grid, List<RobotInput>)>.Fail(stateResult.Error);
-
-            robots.Add(new RobotInput(stateResult.Value, lines[i + 1].Trim()));
-        }
-
-        return Result<(Grid, List<RobotInput>)>.Ok((gridResult.Value, robots));
+        return Result<string>.Ok(instructions);
     }
+
+    private static string[] Split(string line) =>
+        line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
 }

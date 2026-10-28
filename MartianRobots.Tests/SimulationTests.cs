@@ -163,7 +163,7 @@ public class SimulationTests
     [Fact]
     public void Scent_PreventsRobotFallingOffSameEdge()
     {
-        _grid.AddScent(3, 3);
+        _grid.TryAddScent(3, 3);
         var result = _sim.Execute(new RobotState(3, 3, Direction.N), "F", _grid);
         Assert.False(result.IsLost);
         Assert.Equal(new RobotState(3, 3, Direction.N), result);
@@ -172,7 +172,7 @@ public class SimulationTests
     [Fact]
     public void Scent_RobotContinuesAfterIgnoredInstruction()
     {
-        _grid.AddScent(3, 3);
+        _grid.TryAddScent(3, 3);
         var result = _sim.Execute(new RobotState(3, 3, Direction.N), "FLF", _grid);
         Assert.False(result.IsLost);
         Assert.Equal(new RobotState(2, 3, Direction.W), result);
@@ -181,7 +181,7 @@ public class SimulationTests
     [Fact]
     public void Scent_DoesNotProtectDifferentPosition()
     {
-        _grid.AddScent(3, 3);
+        _grid.TryAddScent(3, 3);
         var result = _sim.Execute(new RobotState(4, 3, Direction.N), "F", _grid);
         Assert.True(result.IsLost);
     }
@@ -189,7 +189,7 @@ public class SimulationTests
     [Fact]
     public void Scent_DoesNotBlockSafeMoveFromSamePosition()
     {
-        _grid.AddScent(5, 1);
+        _grid.TryAddScent(5, 1);
         var result = _sim.Execute(new RobotState(5, 1, Direction.N), "F", _grid);
         Assert.False(result.IsLost);
         Assert.Equal(new RobotState(5, 2, Direction.N), result);
@@ -252,6 +252,78 @@ public class SimulationTests
 
         var survivor = sim.Execute(new RobotState(3, 3, Direction.N), "F", grid);
         Assert.False(survivor.IsLost);
+    }
+
+    // --- Corners: scent is position-only, so one lost robot protects both edges at a corner ---
+
+    [Theory]
+    [InlineData(5, 3, Direction.N, Direction.E)]
+    [InlineData(5, 3, Direction.E, Direction.N)]
+    [InlineData(0, 0, Direction.S, Direction.W)]
+    [InlineData(0, 0, Direction.W, Direction.S)]
+    [InlineData(0, 3, Direction.N, Direction.W)]
+    [InlineData(5, 0, Direction.E, Direction.S)]
+    public void Corner_ScentFromOneEdge_ProtectsTheOtherEdge(int x, int y, Direction first, Direction second)
+    {
+        var lost = _sim.Execute(new RobotState(x, y, first), "F", _grid);
+        Assert.True(lost.IsLost);
+
+        var saved = _sim.Execute(new RobotState(x, y, second), "F", _grid);
+        Assert.Equal(new RobotState(x, y, second), saved);
+    }
+
+    [Fact]
+    public void Corner_SecondRobotIgnoresBothExits()
+    {
+        _sim.Execute(new RobotState(5, 3, Direction.N), "FRF", _grid);
+        var result = _sim.Execute(new RobotState(5, 3, Direction.N), "FRF", _grid);
+        Assert.Equal(new RobotState(5, 3, Direction.E), result);
+    }
+
+    [Fact]
+    public void Corner_ScentDoesNotBlockMovingInward()
+    {
+        _sim.Execute(new RobotState(5, 3, Direction.N), "F", _grid);
+        var result = _sim.Execute(new RobotState(5, 3, Direction.S), "F", _grid);
+        Assert.Equal(new RobotState(5, 2, Direction.S), result);
+    }
+
+    [Theory]
+    [InlineData(Direction.N)]
+    [InlineData(Direction.E)]
+    [InlineData(Direction.S)]
+    [InlineData(Direction.W)]
+    public void SinglePointGrid_ScentProtectsAllFourExits(Direction facing)
+    {
+        var grid = new Grid(0, 0);
+        _sim.Execute(new RobotState(0, 0, Direction.N), "F", grid);
+        var result = _sim.Execute(new RobotState(0, 0, facing), "F", grid);
+        Assert.False(result.IsLost);
+    }
+
+    [Fact]
+    public void LostRobot_DoesNotLeaveScentAtOffGridCell()
+    {
+        _sim.Execute(new RobotState(5, 3, Direction.E), "F", _grid);
+        Assert.False(_grid.HasScent(6, 3));
+        Assert.True(_grid.HasScent(5, 3));
+    }
+
+    [Fact]
+    public void RobotAlreadyLost_DoesNotExecuteAnything()
+    {
+        var start = new RobotState(2, 2, Direction.N, IsLost: true);
+        Assert.Equal(start, _sim.Execute(start, "FFLR", _grid));
+    }
+
+    [Fact]
+    public void IsKnownCommand_ReportsOnlyRegisteredCommands()
+    {
+        Assert.True(Simulation.IsKnownCommand('L'));
+        Assert.True(Simulation.IsKnownCommand('R'));
+        Assert.True(Simulation.IsKnownCommand('F'));
+        Assert.False(Simulation.IsKnownCommand('X'));
+        Assert.False(Simulation.IsKnownCommand('f'));
     }
 
     // --- Minimal grid simulation ---

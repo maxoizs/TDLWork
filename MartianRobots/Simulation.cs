@@ -1,3 +1,5 @@
+using Command = System.Func<MartianRobots.RobotState, MartianRobots.Grid, MartianRobots.RobotState>;
+
 namespace MartianRobots;
 
 /// <summary>
@@ -7,12 +9,15 @@ namespace MartianRobots;
 /// </summary>
 public class Simulation
 {
-    private static readonly Dictionary<char, Func<RobotState, Grid, RobotState>> _commands = new()
+    private static readonly Dictionary<char, Command> _commands = new()
     {
         ['L'] = (state, _) => state with { Facing = state.Facing.TurnLeft() },
         ['R'] = (state, _) => state with { Facing = state.Facing.TurnRight() },
         ['F'] = MoveForward,
     };
+
+    /// <summary>Returns true if <paramref name="command"/> is a registered command character.</summary>
+    public static bool IsKnownCommand(char command) => _commands.ContainsKey(command);
 
     /// <summary>
     /// Executes an instruction string for a single robot and returns its final state.
@@ -45,13 +50,9 @@ public class Simulation
         var ny = state.Y + dy;
 
         if (grid.IsOutOfBounds(nx, ny))
-        {
-            if (grid.HasScent(state.X, state.Y))
-                return state;
-
-            grid.AddScent(state.X, state.Y);
-            return state with { IsLost = true };
-        }
+            return grid.TryAddScent(state.X, state.Y)
+                ? state with { IsLost = true }
+                : state;
 
         return state with { X = nx, Y = ny };
     }

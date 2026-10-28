@@ -4,6 +4,8 @@ namespace MartianRobots.Tests;
 
 public class InputParserTests
 {
+    private static readonly Grid SampleGrid = new(5, 3);
+
     // --- ParseGrid: success ---
 
     [Fact]
@@ -25,52 +27,39 @@ public class InputParserTests
         Assert.True(result.Value.IsOutOfBounds(1, 0));
     }
 
+    [Fact]
+    public void ParseGrid_MaxCoordinate_Succeeds()
+    {
+        var result = InputParser.ParseGrid("50 50");
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value.IsOutOfBounds(50, 50));
+    }
+
+    [Fact]
+    public void ParseGrid_TabSeparated_Succeeds()
+    {
+        var result = InputParser.ParseGrid("5\t3");
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value.IsOutOfBounds(5, 3));
+    }
+
     // --- ParseGrid: failure ---
 
-    [Fact]
-    public void ParseGrid_NonNumericX_Fails()
+    [Theory]
+    [InlineData("X 3")]
+    [InlineData("5 Y")]
+    [InlineData("5")]
+    [InlineData("")]
+    [InlineData("-1 3")]
+    [InlineData("5 -1")]
+    [InlineData("51 3")]
+    [InlineData("5 51")]
+    [InlineData("5 3 7")]
+    [InlineData("5.5 3")]
+    [InlineData("99999999999 3")]
+    public void ParseGrid_Invalid_Fails(string line)
     {
-        var result = InputParser.ParseGrid("X 3");
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.Error);
-    }
-
-    [Fact]
-    public void ParseGrid_NonNumericY_Fails()
-    {
-        var result = InputParser.ParseGrid("5 Y");
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.Error);
-    }
-
-    [Fact]
-    public void ParseGrid_MissingParts_Fails()
-    {
-        var result = InputParser.ParseGrid("5");
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.Error);
-    }
-
-    [Fact]
-    public void ParseGrid_EmptyString_Fails()
-    {
-        var result = InputParser.ParseGrid("");
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.Error);
-    }
-
-    [Fact]
-    public void ParseGrid_NegativeCoordinateInvalid_Fails()
-    {
-        var result = InputParser.ParseGrid("-1 3");
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.Error);
-    }
-
-    [Fact]
-    public void ParseGrid_CoordinateExceedsMax_Fails()
-    {
-        var result = InputParser.ParseGrid("51 3");
+        var result = InputParser.ParseGrid(line);
         Assert.False(result.IsSuccess);
         Assert.NotEmpty(result.Error);
     }
@@ -82,9 +71,11 @@ public class InputParserTests
     [InlineData("0 0 N", 0, 0, Direction.N)]
     [InlineData("5 3 S", 5, 3, Direction.S)]
     [InlineData("3 2 W", 3, 2, Direction.W)]
+    [InlineData("0 3 N", 0, 3, Direction.N)]
+    [InlineData("5 0 N", 5, 0, Direction.N)]
     public void ParseRobotState_ReturnsCorrectState(string line, int x, int y, Direction facing)
     {
-        var result = InputParser.ParseRobotState(line);
+        var result = InputParser.ParseRobotState(line, SampleGrid);
         Assert.True(result.IsSuccess);
         Assert.Equal(new RobotState(x, y, facing), result.Value);
     }
@@ -96,7 +87,7 @@ public class InputParserTests
     [InlineData("1 1 w", Direction.W)]
     public void ParseRobotState_LowercaseDirection_ParsedCorrectly(string line, Direction expected)
     {
-        var result = InputParser.ParseRobotState(line);
+        var result = InputParser.ParseRobotState(line, SampleGrid);
         Assert.True(result.IsSuccess);
         Assert.Equal(expected, result.Value.Facing);
     }
@@ -104,7 +95,15 @@ public class InputParserTests
     [Fact]
     public void ParseRobotState_WithTrailingWhitespace_ParsedCorrectly()
     {
-        var result = InputParser.ParseRobotState("1 1 E   ");
+        var result = InputParser.ParseRobotState("1 1 E   ", SampleGrid);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(new RobotState(1, 1, Direction.E), result.Value);
+    }
+
+    [Fact]
+    public void ParseRobotState_TabSeparated_ParsedCorrectly()
+    {
+        var result = InputParser.ParseRobotState("1\t1\tE", SampleGrid);
         Assert.True(result.IsSuccess);
         Assert.Equal(new RobotState(1, 1, Direction.E), result.Value);
     }
@@ -114,165 +113,99 @@ public class InputParserTests
     [Fact]
     public void ParseRobotState_InvalidDirection_Fails()
     {
-        var result = InputParser.ParseRobotState("1 1 X");
+        var result = InputParser.ParseRobotState("1 1 X", SampleGrid);
         Assert.False(result.IsSuccess);
         Assert.Contains("X", result.Error);
     }
 
-    [Fact]
-    public void ParseRobotState_NonNumericX_Fails()
+    [Theory]
+    [InlineData("1 1 0")]
+    [InlineData("1 1 1")]
+    [InlineData("1 1 5")]
+    [InlineData("1 1 -1")]
+    [InlineData("1 1 NE")]
+    [InlineData("1 1 N,E")]
+    public void ParseRobotState_NumericOrMultiLetterDirection_Fails(string line)
     {
-        var result = InputParser.ParseRobotState("A 1 N");
+        var result = InputParser.ParseRobotState(line, SampleGrid);
         Assert.False(result.IsSuccess);
         Assert.NotEmpty(result.Error);
     }
 
-    [Fact]
-    public void ParseRobotState_NonNumericY_Fails()
+    [Theory]
+    [InlineData("A 1 N")]
+    [InlineData("1 B N")]
+    [InlineData("1 1")]
+    [InlineData("1 1 E junk")]
+    [InlineData("   ")]
+    [InlineData("")]
+    public void ParseRobotState_MalformedLine_Fails(string line)
     {
-        var result = InputParser.ParseRobotState("1 B N");
+        var result = InputParser.ParseRobotState(line, SampleGrid);
         Assert.False(result.IsSuccess);
         Assert.NotEmpty(result.Error);
     }
 
-    [Fact]
-    public void ParseRobotState_MissingParts_Fails()
+    [Theory]
+    [InlineData("6 1 N")]
+    [InlineData("1 4 N")]
+    [InlineData("-1 1 N")]
+    [InlineData("1 -1 N")]
+    [InlineData("51 1 N")]
+    [InlineData("99999999999 1 N")]
+    public void ParseRobotState_StartOutsideGrid_Fails(string line)
     {
-        var result = InputParser.ParseRobotState("1 1");
+        var result = InputParser.ParseRobotState(line, SampleGrid);
         Assert.False(result.IsSuccess);
         Assert.NotEmpty(result.Error);
     }
 
-    [Fact]
-    public void ParseRobotState_EmptyString_Fails()
-    {
-        var result = InputParser.ParseRobotState("   ");
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.Error);
-    }
+    // --- ParseInstructions ---
 
-    // --- Parse: success ---
-
-    [Fact]
-    public void ParseInput_ReturnsCorrectNumberOfRobots()
+    [Theory]
+    [InlineData("RFRFRFRF")]
+    [InlineData("L")]
+    [InlineData("")]
+    public void ParseInstructions_ValidCommands_Succeeds(string line)
     {
-        var result = InputParser.Parse(SampleInput);
+        var result = InputParser.ParseInstructions(line);
         Assert.True(result.IsSuccess);
-        Assert.Equal(3, result.Value.Robots.Count);
+        Assert.Equal(line, result.Value);
     }
 
     [Fact]
-    public void ParseInput_FirstRobotCorrect()
+    public void ParseInstructions_Lowercase_NormalisedToUppercase()
     {
-        var result = InputParser.Parse(SampleInput);
+        var result = InputParser.ParseInstructions("lrf");
         Assert.True(result.IsSuccess);
-        Assert.Equal(new RobotState(1, 1, Direction.E), result.Value.Robots[0].State);
-        Assert.Equal("RFRFRFRF", result.Value.Robots[0].Instructions);
+        Assert.Equal("LRF", result.Value);
     }
 
     [Fact]
-    public void ParseInput_SecondRobotCorrect()
+    public void ParseInstructions_TrimsSurroundingWhitespace()
     {
-        var result = InputParser.Parse(SampleInput);
+        var result = InputParser.ParseInstructions("  FRF \r");
         Assert.True(result.IsSuccess);
-        Assert.Equal(new RobotState(3, 2, Direction.N), result.Value.Robots[1].State);
-        Assert.Equal("FRRFLLFFRRFLL", result.Value.Robots[1].Instructions);
+        Assert.Equal("FRF", result.Value);
     }
 
-    [Fact]
-    public void ParseInput_ThirdRobotCorrect()
+    [Theory]
+    [InlineData("FRX")]
+    [InlineData("F R")]
+    [InlineData("F1")]
+    [InlineData("F\0")]
+    [InlineData("FF,")]
+    public void ParseInstructions_UnknownCharacter_Fails(string line)
     {
-        var result = InputParser.Parse(SampleInput);
-        Assert.True(result.IsSuccess);
-        Assert.Equal(new RobotState(0, 3, Direction.W), result.Value.Robots[2].State);
-        Assert.Equal("LLFFFLFLFL", result.Value.Robots[2].Instructions);
-    }
-
-    [Fact]
-    public void ParseInput_GridBoundsCorrect()
-    {
-        var result = InputParser.Parse(SampleInput);
-        Assert.True(result.IsSuccess);
-        Assert.False(result.Value.Grid.IsOutOfBounds(5, 3));
-        Assert.True(result.Value.Grid.IsOutOfBounds(6, 3));
-    }
-
-    [Fact]
-    public void ParseInput_SingleRobot()
-    {
-        var result = InputParser.Parse("2 2\n1 1 N\nF");
-        Assert.True(result.IsSuccess);
-        Assert.Single(result.Value.Robots);
-        Assert.Equal("F", result.Value.Robots[0].Instructions);
-    }
-
-    [Fact]
-    public void ParseInput_NoRobots_ReturnsEmptyList()
-    {
-        var result = InputParser.Parse("5 3");
-        Assert.True(result.IsSuccess);
-        Assert.Empty(result.Value.Robots);
-    }
-
-    [Fact]
-    public void ParseInput_WindowsLineEndings_ParsedCorrectly()
-    {
-        var result = InputParser.Parse("5 3\r\n1 1 E\r\nRFRFRFRF\r\n3 2 N\r\nFRRFLLFFRRFLL");
-        Assert.True(result.IsSuccess);
-        Assert.Equal(2, result.Value.Robots.Count);
-        Assert.Equal("RFRFRFRF", result.Value.Robots[0].Instructions);
-    }
-
-    // --- Parse: failure ---
-
-    [Fact]
-    public void Parse_EmptyInput_Fails()
-    {
-        var result = InputParser.Parse("");
+        var result = InputParser.ParseInstructions(line);
         Assert.False(result.IsSuccess);
         Assert.NotEmpty(result.Error);
     }
 
     [Fact]
-    public void Parse_WhitespaceOnlyInput_Fails()
+    public void ParseInstructions_Over100Characters_StillAccepted()
     {
-        var result = InputParser.Parse("   \n  ");
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.Error);
+        var result = InputParser.ParseInstructions(new string('F', 500));
+        Assert.True(result.IsSuccess);
     }
-
-    [Fact]
-    public void Parse_BadGridLine_Fails()
-    {
-        var result = InputParser.Parse("bad\n1 1 N\nF");
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.Error);
-    }
-
-    [Fact]
-    public void Parse_PositionLineWithoutInstructionLine_Fails()
-    {
-        var result = InputParser.Parse("5 3\n1 1 N");
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.Error);
-    }
-
-    [Fact]
-    public void Parse_InvalidRobotDirection_Fails()
-    {
-        var result = InputParser.Parse("5 3\n1 1 X\nFFF");
-        Assert.False(result.IsSuccess);
-        Assert.Contains("X", result.Error);
-    }
-
-    [Fact]
-    public void Parse_NonNumericRobotCoord_Fails()
-    {
-        var result = InputParser.Parse("5 3\nA 1 N\nFFF");
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.Error);
-    }
-
-    private const string SampleInput =
-        "5 3\n1 1 E\nRFRFRFRF\n3 2 N\nFRRFLLFFRRFLL\n0 3 W\nLLFFFLFLFL";
 }

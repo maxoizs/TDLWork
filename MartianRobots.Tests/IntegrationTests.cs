@@ -2,58 +2,18 @@ using MartianRobots;
 
 namespace MartianRobots.Tests;
 
+/// <summary>Runs the real parser, simulation and runner together on the challenge's sample.</summary>
 public class IntegrationTests
 {
-    private static List<string> Run(string input)
-    {
-        var parsed = InputParser.Parse(input);
-        Assert.True(parsed.IsSuccess, parsed.Error);
-        var (grid, robots) = parsed.Value;
-        var sim = new Simulation();
-        var results = new List<string>();
-
-        foreach (var robot in robots)
-        {
-            var final = sim.Execute(robot.State, robot.Instructions, grid);
-            var lost = final.IsLost ? " LOST" : "";
-            results.Add($"{final.X} {final.Y} {final.Facing}{lost}");
-        }
-
-        return results;
-    }
-
     [Fact]
-    public void SampleInput_MatchesExpectedOutput()
+    public void ChallengeSample_ProducesExpectedOutput()
     {
-        const string input = "5 3\n1 1 E\nRFRFRFRF\n3 2 N\nFRRFLLFFRRFLL\n0 3 W\nLLFFFLFLFL";
+        const string input = "5 3\n1 1 E\nRFRFRFRF\n3 2 N\nFRRFLLFFRRFLL\n0 3 W\nLLFFFLFLFL\n";
+        var output = new StringWriter { NewLine = "\n" };
 
-        var output = Run(input);
+        var exitCode = Runner.Run(new StringReader(input), output, TextWriter.Null);
 
-        Assert.Equal("1 1 E", output[0]);
-        Assert.Equal("3 3 N LOST", output[1]);
-        Assert.Equal("2 3 S", output[2]);
-    }
-
-    [Fact]
-    public void SingleRobot_NoOpInstructions_ReturnsStartPosition()
-    {
-        var output = Run("5 5\n2 2 N\nLLLL");
-        Assert.Equal("2 2 N", output[0]);
-    }
-
-    [Fact]
-    public void SingleRobot_FallsOff_Immediately()
-    {
-        var output = Run("2 2\n2 2 N\nF");
-        Assert.Equal("2 2 N LOST", output[0]);
-    }
-
-    [Fact]
-    public void MultipleRobots_ProcessedSequentially_ScentsShared()
-    {
-        const string input = "5 3\n3 2 N\nFRRFLLFFRRFLL\n0 3 W\nLLFFFLFLFL";
-        var output = Run(input);
-        Assert.Equal("3 3 N LOST", output[0]);
-        Assert.Equal("2 3 S", output[1]);
+        Assert.Equal(0, exitCode);
+        Assert.Equal("1 1 E\n3 3 N LOST\n2 3 S\n", output.ToString());
     }
 }

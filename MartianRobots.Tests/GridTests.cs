@@ -69,22 +69,40 @@ public class GridTests
     [Fact]
     public void HasScent_DoesNotLeakToAdjacentCell()
     {
-        _grid.AddScent(3, 3);
+        _grid.TryAddScent(3, 3);
         Assert.False(_grid.HasScent(3, 2));
         Assert.False(_grid.HasScent(4, 3));
     }
 
     [Fact]
-    public void AddScent_IsDeduplicated()
+    public void TryAddScent_IsDeduplicated()
     {
-        _grid.AddScent(1, 1);
-        _grid.AddScent(1, 1);
+        _grid.TryAddScent(1, 1);
+        _grid.TryAddScent(1, 1);
         Assert.True(_grid.HasScent(1, 1));
+    }
+
+    [Fact]
+    public void TryAddScent_FirstCall_ReturnsTrue() =>
+        Assert.True(_grid.TryAddScent(2, 2));
+
+    [Fact]
+    public void TryAddScent_SecondCallSamePosition_ReturnsFalse()
+    {
+        _grid.TryAddScent(2, 2);
+        Assert.False(_grid.TryAddScent(2, 2));
+    }
+
+    [Fact]
+    public void TryAddScent_DifferentPosition_ReturnsTrue()
+    {
+        _grid.TryAddScent(2, 2);
+        Assert.True(_grid.TryAddScent(2, 3));
     }
 
     private bool AddAndCheck(int x, int y)
     {
-        _grid.AddScent(x, y);
+        _grid.TryAddScent(x, y);
         return _grid.HasScent(x, y);
     }
 }

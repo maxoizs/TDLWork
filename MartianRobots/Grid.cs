@@ -14,6 +14,9 @@ public class Grid(int maxX, int maxY)
     /// <summary>Returns true if a robot previously fell off the grid from (x, y).</summary>
     public bool HasScent(int x, int y) => _scents.Contains((x, y));
 
-    /// <summary>Marks (x, y) as a scent position after a robot is lost there.</summary>
-    public void AddScent(int x, int y) => _scents.Add((x, y));
+    /// <summary>
+    /// Marks (x, y) as a scent position. Returns true if the scent is new (this robot is the first
+    /// to be lost here) and false if one was already there. Check and add are a single step.
+    /// </summary>
+    public bool TryAddScent(int x, int y) => _scents.Add((x, y));
 }
